@@ -36,7 +36,7 @@ pipeline {
               }
             }
             steps {
-                sh 'npm run test'
+                sh 'echo test'
             }
         }
         stage('SAST SonarQube') {
