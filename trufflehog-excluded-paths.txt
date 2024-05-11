@@ -4,3 +4,4 @@ dependency-check*
 retire-scan-report.txt
 snyk-scan-report.txt
 trufflehog-scan-result.txt
+tes
