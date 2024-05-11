@@ -1,5 +1,8 @@
 pipeline {
     agent none
+    environment {
+        SNYK_CREDENTIALS = credentials('SnykToken')
+    }
     stages {
         stage('Secret Scanning Using Trufflehog') {
             agent {
