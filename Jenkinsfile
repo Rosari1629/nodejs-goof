@@ -80,5 +80,6 @@ pipeline {
                     sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no fadly@192.168.1.31 docker run -it --detach -p 3001:3001 --name nodejsgoof --network host fadly31/nodejsgoof'
                 }
             }
+        }
    }
 }
