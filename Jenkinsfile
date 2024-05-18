@@ -77,7 +77,7 @@ pipeline {
                     sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no fadly@192.168.1.31 "echo Lamongan117 | docker login -u fadly31 --password-stdin"'
                     sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no fadly@192.168.1.3 docker pull fadly31/nodejsgoof'
                     sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no fadly@192.168.1.3 docker rm --force nodejsgoof'
-                    sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no fadly@192.168.1.3 docker run -it --detach -p 3001:3001 9229:9229 --name nodejsgoof --network host fadly31/nodejsgoof'
+                    sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no fadly@192.168.1.3 docker run -it --detach -p 3001:3001 --name nodejsgoof --network host fadly31/nodejsgoof'
                 }
             }
    }
