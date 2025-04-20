@@ -14,10 +14,10 @@ services:
     ports:
       - "3001:3001"
       - "9229:9229"
-    links:
+    depends_on:
       - goof-mongo
       - goof-mysql
-    depends_on:
+    links:
       - goof-mongo
       - goof-mysql
 
@@ -31,8 +31,7 @@ services:
     container_name: goof-mysql
     image: mysql:5
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: acme
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=acme
     ports:
       - "3306:3306"
-
