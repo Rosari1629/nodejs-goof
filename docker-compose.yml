@@ -5,19 +5,29 @@ services:
     container_name: goof
     environment:
       - DOCKER=1
+      - MYSQL_HOST=goof-mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=acme
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=root
+      - MONGO_URL=mongodb://goof-mongo:27017/express-todo
     ports:
       - "3001:3001"
       - "9229:9229"
     links:
       - goof-mongo
+      - goof-mysql
     depends_on:
       - goof-mongo
+      - goof-mysql
+
   goof-mongo:
     container_name: goof-mongo
     image: mongo:3
     ports:
       - "27017:27017"
-  good-mysql:
+
+  goof-mysql:
     container_name: goof-mysql
     image: mysql:5
     environment:
@@ -25,3 +35,4 @@ services:
       MYSQL_DATABASE: acme
     ports:
       - "3306:3306"
+
