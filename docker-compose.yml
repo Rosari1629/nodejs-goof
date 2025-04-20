@@ -15,8 +15,10 @@ services:
       - "3001:3001"
       - "9229:9229"
     depends_on:
-      - goof-mongo
-      - goof-mysql
+      goof-mongo:
+        condition: service_healthy
+      goof-mysql:
+        condition: service_healthy
     links:
       - goof-mongo
       - goof-mysql
@@ -26,6 +28,11 @@ services:
     image: mongo:3
     ports:
       - "27017:27017"
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongo localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   goof-mysql:
     container_name: goof-mysql
@@ -35,3 +42,8 @@ services:
       - MYSQL_DATABASE=acme
     ports:
       - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
