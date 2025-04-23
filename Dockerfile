@@ -13,5 +13,5 @@ RUN chmod +x /usr/src/goof/wait-for-it.sh && \
 EXPOSE 3001
 EXPOSE 9229
 
-ENTRYPOINT ["./wait-for-it.sh", "localhost:3306", "--timeout=30", "--strict", "--", "npm", "start"]
+ENTRYPOINT ["./wait-for-it.sh", "mysql:3306", "--timeout=30", "--strict", "--", "npm", "start"]
 
