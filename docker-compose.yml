@@ -21,7 +21,7 @@ services:
     links:
       - goof-mongo
       - goof-mysql
-    command: ["./wait-for-it.sh", "goof-mysql:3306", "--", "./wait-for-it.sh", "goof-mongo:27017", "--", "npm", "start"]
+    command: ["./wait-for-it.sh", "goof-mysql:3306", "--timeout=60", "--strict", "--", "./wait-for-it.sh", "goof-mongo:27017", "--timeout=60", "--strict", "--", "npm", "start"]
     networks:
       - goofnet
 
@@ -35,6 +35,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
     networks:
       - goofnet
 
@@ -47,10 +48,11 @@ services:
     ports:
       - "3306:3306"
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "goof-mysql", "-uroot", "-proot"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
     networks:
       - goofnet
 
