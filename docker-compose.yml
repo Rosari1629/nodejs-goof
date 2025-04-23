@@ -23,6 +23,8 @@ services:
       - goof-mongo
       - goof-mysql
     command: ["./wait-for-it.sh", "goof-mysql:3306", "--", "./wait-for-it.sh", "goof-mongo:27017", "--", "npm", "start"]
+    networks:
+      - goofnet
 
   goof-mongo:
     container_name: goof-mongo
@@ -34,6 +36,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - goofnet
 
   goof-mysql:
     container_name: goof-mysql
@@ -48,3 +52,31 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - goofnet
+
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: jenkins
+    ports:
+      - "8080:8080"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+    networks:
+      - goofnet
+
+  zap:
+    image: ghcr.io/zaproxy/zaproxy-stable
+    container_name: zap
+    command: zap.sh -daemon -host 0.0.0.0 -port 8090 -config api.addrs.addr.name=.* -config api.disablekey=true
+    ports:
+      - "8090:8090"
+    networks:
+      - goofnet
+
+networks:
+  goofnet:
+    driver: bridge
+
+volumes:
+  jenkins_home:
