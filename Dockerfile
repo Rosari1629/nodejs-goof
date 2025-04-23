@@ -1,27 +1,17 @@
-FROM node:16
+FROM node:18.13.0
 
-# Create necessary directories
-RUN mkdir /usr/src/goof
-RUN mkdir /tmp/extracted_files
+RUN mkdir /usr/src/goof /tmp/extracted_files
 
-# Copy project files
 COPY . /usr/src/goof
 
-# Set the working directory
 WORKDIR /usr/src/goof
 
-# Copy the wait-for-it.sh script to the container
-COPY wait-for-it.sh /usr/src/goof/
+RUN chmod +x /usr/src/goof/wait-for-it.sh && \
+    npm update && \
+    npm install
 
-# Make the wait-for-it.sh script executable
-RUN chmod +x /usr/src/goof/wait-for-it.sh
-
-# Install dependencies
-RUN npm install
-
-# Expose ports
 EXPOSE 3001
 EXPOSE 9229
 
-# Run the application, waiting for MySQL and MongoDB
-ENTRYPOINT ["./wait-for-it.sh", "goof-mysql:3306", "--", "./wait-for-it.sh", "goof-mongo:27017", "--", "npm", "start"]
+ENTRYPOINT ["./wait-for-it.sh", "localhost:3306", "--timeout=30", "--strict", "--", "npm", "start"]
+
