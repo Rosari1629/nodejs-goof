@@ -67,7 +67,7 @@ services:
       - goofnet
 
   zap:
-    image: ghcr.io/zaproxy/zaproxy-stable
+    image: ghcr.io/zaproxy/zaproxy-stable:2.14.0
     container_name: zap
     command: zap.sh -daemon -host 0.0.0.0 -port 8090 -config api.addrs.addr.name=.* -config api.disablekey=true
     ports:
