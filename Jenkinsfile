@@ -85,7 +85,7 @@ pipeline {
             }
             steps {
                 sh '''
-                    zap-baseline.py -t http://localhost:3001 -g gen.conf -r zap-report.html || true
+                    zap-baseline.py -t http://localhost:8090 -g gen.conf -r zap-report.html || true
                 '''
                 archiveArtifacts artifacts: 'zap-report.html', allowEmptyArchive: true
             }
