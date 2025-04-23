@@ -7,11 +7,11 @@ COPY . /usr/src/goof
 WORKDIR /usr/src/goof
 
 RUN chmod +x /usr/src/goof/wait-for-it.sh && \
+    chmod +x /usr/src/goof/entrypoint.sh && \
     npm update && \
     npm install
 
 EXPOSE 3001
 EXPOSE 9229
 
-ENTRYPOINT ["./wait-for-it.sh", "mysql:3306", "--timeout=30", "--strict", "--", "npm", "start"]
-
+ENTRYPOINT ["./entrypoint.sh"]
