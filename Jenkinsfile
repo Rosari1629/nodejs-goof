@@ -57,8 +57,8 @@ pipeline {
                     sh 'docker build -t $DOCKER_USER/nodejs-goof .'
                     sh 'docker push $DOCKER_USER/nodejs-goof'
                 }
+                }
         }
-        
 
         stage('Deploy Docker Image') {
             agent {
