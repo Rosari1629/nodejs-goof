@@ -51,12 +51,19 @@ pipeline {
                     args '--user root --network host -v /var/run/docker.sock:/var/run/docker.sock'
                 }
             }
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'DockerHubCredentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
-                    sh 'docker build -t $DOCKER_USER/nodejs-goof .'
-                    sh 'docker push $DOCKER_USER/nodejs-goof'
-                }
+   steps {
+    withCredentials([
+        sshUserPrivateKey(credentialsId: "DeploymentSSHKey", keyFileVariable: 'keyfile'),
+        usernamePassword(credentialsId: 'DockerHubCredentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')
+    ]) {
+        sh 'echo "Using keyfile at: ${keyfile}"'
+        sh 'ls -l ${keyfile}'
+        sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@192.168.1.39 "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"'
+        sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@192.168.1.39 "docker pull $DOCKER_USER/nodejs-goof"'
+        sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@192.168.1.39 "docker run -it --detach -p 3001:3001 --name nodejsgoof --network host $DOCKER_USER/nodejs-goof"'
+    }
+}
+
             }
         }
 
