@@ -69,9 +69,9 @@ pipeline {
             }
             steps {
                 withCredentials([sshUserPrivateKey(credentialsId: "DeploymentSSHKey", keyFileVariable: 'keyfile')]) {
-                    sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@10.0.2.15 "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"'
-                    sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@10.0.2.15 docker pull $DOCKER_USER/nodejs-goof'
-                    sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@10.0.2.15 docker run -it --detach -p 3001:3001 --name nodejsgoof --network host $DOCKER_USER/nodejsgoof'
+                    sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@192.168.1.39 "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"'
+                    sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@192.168.1.39 docker pull $DOCKER_USER/nodejs-goof'
+                    sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@192.168.1.39 docker run -it --detach -p 3001:3001 --name nodejsgoof --network host $DOCKER_USER/nodejsgoof'
                 }
             }
         }
