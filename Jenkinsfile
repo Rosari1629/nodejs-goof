@@ -52,11 +52,11 @@ pipeline {
                 }
             }
            steps {
-                sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@192.168.1.39 "echo il0v3ayang | docker login -u rosari1629 --password-stdin"'
-                sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@192.168.1.39 "docker pull rosari1629/nodejs-goof"'
-                sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@192.168.1.39 "docker run -it --detach -p 3001:3001 --name nodejsgoof --network host $DOCKER_USER/nodejs-goof"'
-            }
-
+                withCredentials([usernamePassword(credentialsId: 'DockerHubCredentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                    sh 'docker build -t $DOCKER_USER/nodejs-goof .'
+                    sh 'docker push $DOCKER_USER/nodejs-goof'
+                }
         }
         
 
