@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   goof:
     build: .
@@ -9,33 +11,17 @@ services:
       - MYSQL_DATABASE=acme
       - MYSQL_USER=root
       - MYSQL_PASSWORD=root
-      - MONGO_URL=mongodb://goof-mongo:27017/express-todo
+      - MONGO_URL=mongodb://<mongo_host>:27017/express-todo  # Ganti <mongo_host> dengan IP atau hostname MongoDB yang sudah berjalan
+      - JENKINS_URL=http://<jenkins_host>:8080  # Ganti <jenkins_host> dengan IP atau hostname Jenkins yang sudah berjalan
     ports:
       - "3001:3001"
       - "9229:9229"
     depends_on:
-      goof-mongo:
-        condition: service_healthy
       goof-mysql:
         condition: service_healthy
     links:
-      - goof-mongo
       - goof-mysql
-    command: ["./wait-for-it.sh", "goof-mysql:3306", "--timeout=60", "--strict", "--", "./wait-for-it.sh", "goof-mongo:27017", "--timeout=60", "--strict", "--", "npm", "start"]
-    networks:
-      - goofnet
-
-  goof-mongo:
-    container_name: goof-mongo
-    image: mongo:3
-    ports:
-      - "27017:27017"
-    healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongo localhost:27017/test --quiet
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+    command: ["./wait-for-it.sh", "goof-mysql:3306", "--timeout=60", "--strict", "--", "npm", "start"]
     networks:
       - goofnet
 
@@ -56,28 +42,6 @@ services:
     networks:
       - goofnet
 
-  jenkins:
-    image: jenkins/jenkins:lts
-    container_name: jenkins
-    ports:
-      - "8080:8080"
-    volumes:
-      - jenkins_home:/var/jenkins_home
-    networks:
-      - goofnet
-
-  zap:
-    image: owasp/zap2docker-stable
-    container_name: zap
-    command: zap.sh -daemon -host 0.0.0.0 -port 8090 -config api.addrs.addr.name=.* -config api.disablekey=true
-    ports:
-      - "8090:8090"
-    networks:
-      - goofnet
-
 networks:
   goofnet:
     driver: bridge
-
-volumes:
-  jenkins_home:
