@@ -1,27 +1,47 @@
-version: "2"
+version: '3.8'
+
 services:
   goof:
     build: .
     container_name: goof
     environment:
       - DOCKER=1
+      - MYSQL_HOST=goof-mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=acme
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=root
+      - MONGO_URL=mongodb://<mongo_host>:27017/express-todo  # Ganti <mongo_host> dengan IP atau hostname MongoDB yang sudah berjalan
+      - JENKINS_URL=http://<jenkins_host>:8080  # Ganti <jenkins_host> dengan IP atau hostname Jenkins yang sudah berjalan
     ports:
       - "3001:3001"
       - "9229:9229"
-    links:
-      - goof-mongo
     depends_on:
-      - goof-mongo
-  goof-mongo:
-    container_name: goof-mongo
-    image: mongo:3
-    ports:
-      - "27017:27017"
-  good-mysql:
+      goof-mysql:
+        condition: service_healthy
+    links:
+      - goof-mysql
+    command: ["./wait-for-it.sh", "goof-mysql:3306", "--timeout=60", "--strict", "--", "npm", "start"]
+    networks:
+      - goofnet
+
+  goof-mysql:
     container_name: goof-mysql
     image: mysql:5
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: acme
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=acme
     ports:
       - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "goof-mysql", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - goofnet
+
+networks:
+  goofnet:
+    driver: bridge
