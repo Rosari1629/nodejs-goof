@@ -70,7 +70,7 @@ pipeline {
             steps {
                 withCredentials([sshUserPrivateKey(credentialsId: "DeploymentSSHKey", keyFileVariable: 'keyfile')]) {
                     sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@172.20.10.2 "echo il0v3ayang | docker login -u rosari1629 --password-stdin"'
-                    sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@172.20.10.2 docker pull rosari/nodejs-goof'
+                    sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@172.20.10.2 docker pull rosari1629/nodejs-goof'
                     sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@172.20.10.2 docker run -it --detach -p 3001:3001 --name nodejsgoof --network host rosari1629/nodejsgoof'
                 }
             }
