@@ -57,7 +57,7 @@ pipeline {
                     sh 'docker build -t $DOCKER_USER/nodejs-goof .'
                     sh 'docker push $DOCKER_USER/nodejs-goof'
                 }
-                }
+            }
         }
 
         stage('Deploy Docker Image') {
@@ -89,6 +89,18 @@ pipeline {
                 '''
                 archiveArtifacts artifacts: 'zap-report.html', allowEmptyArchive: true
             }
+        }
+    }
+
+    post {
+        always {
+            emailext(
+                subject: "Laporan CI/CD Pipeline (ZAP Scan)",
+                body: "Berikut adalah hasil pipeline dan DAST scan OWASP ZAP.<br><br>Silakan lihat lampiran.",
+                to: 'your.email@gmail.com',
+                attachmentsPattern: 'zap-report.html',
+                mimeType: 'text/html'
+            )
         }
     }
 }
