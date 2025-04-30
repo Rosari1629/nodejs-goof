@@ -130,14 +130,18 @@ pipeline {
 
     post {
         success {
-            publishHTML(target: [
-                reportDir: '.',
-                reportFiles: 'report.html',
-                reportName: 'ZAP Security Report',
-                keepAll: true,
-                allowMissing: true,
-                alwaysLinkToLastBuild: true
-            ])
+            script {
+                node {
+                    publishHTML(target: [
+                        reportDir: '.',
+                        reportFiles: 'report.html',
+                        reportName: 'ZAP Security Report',
+                        keepAll: true,
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: true
+                    ])
+                }
+            }
         }
     }
 }
