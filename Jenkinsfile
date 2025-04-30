@@ -89,13 +89,20 @@ pipeline {
                 }
             }
             steps {
-                sh '''
-                    zap-baseline.py -t http://localhost:3001 -g gen.conf -r /zap/wrk/zap-report.html || true
-                    ls -la /zap/wrk  # Periksa apakah laporan ada di sini
-                '''
-                // Salin laporan dari kontainer ke workspace Jenkins
-                sh 'docker cp owasp:/zap/wrk/zap-report.html .'
-                archiveArtifacts artifacts: 'zap-report.html', allowEmptyArchive: true
+                script {
+                    // Membuat direktori /zap/wrk di dalam kontainer jika tidak ada
+                    sh 'docker exec owasp mkdir -p /zap/wrk'
+
+                    // Menjalankan pemindaian ZAP dan menghasilkan laporan
+                    sh '''
+                        zap-baseline.py -t http://localhost:3001 -g gen.conf -r /zap/wrk/zap-report.html || true
+                        ls -la /zap/wrk  # Memeriksa apakah laporan ada di sini
+                    '''
+                    
+                    // Menyalin laporan ke workspace Jenkins
+                    sh 'docker cp owasp:/zap/wrk/zap-report.html .'
+                    archiveArtifacts artifacts: 'zap-report.html', allowEmptyArchive: true
+                }
             }
         }
     }
