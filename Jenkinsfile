@@ -97,7 +97,7 @@ pipeline {
             emailext(
                 subject: "Laporan CI/CD Pipeline (ZAP Scan)",
                 body: "Berikut adalah hasil pipeline dan DAST scan OWASP ZAP.<br><br>Silakan lihat lampiran.",
-                to: 'your.email@gmail.com',
+                to: 'rosaridalige36@gmail.com',
                 attachmentsPattern: 'zap-report.html',
                 mimeType: 'text/html'
             )
