@@ -103,14 +103,19 @@ pipeline {
         }
 
         stage('Copy and Archive Report') {
+            agent any
             steps {
-                echo 'Menyalin dan mengarsip report.html dari direktori zap-report'
-                sh 'cp zap-report/report.html . || echo "Gagal menyalin report.html"'
-                archiveArtifacts artifacts: 'report.html', allowEmptyArchive: true
+                script {
+                    echo 'Menyalin report.html dari direktori zap-report ke workspace...'
+                    sh 'cp zap-report/report.html . || echo "Gagal menyalin report.html"'
+                    sh 'ls -lh'
+                    archiveArtifacts artifacts: 'report.html', allowEmptyArchive: true
+                }
             }
         }
 
         stage('Email Report') {
+            agent any
             steps {
                 emailext(
                     subject: "Laporan CI/CD Pipeline (ZAP Scan)",
@@ -120,6 +125,19 @@ pipeline {
                     mimeType: 'text/html'
                 )
             }
+        }
+    }
+
+    post {
+        success {
+            publishHTML(target: [
+                reportDir: '.',
+                reportFiles: 'report.html',
+                reportName: 'ZAP Security Report',
+                keepAll: true,
+                allowMissing: true,
+                alwaysLinkToLastBuild: true
+            ])
         }
     }
 }
