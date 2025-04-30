@@ -51,7 +51,7 @@ pipeline {
                     args '--user root --network host -v /var/run/docker.sock:/var/run/docker.sock'
                 }
             }
-           steps {
+            steps {
                 withCredentials([usernamePassword(credentialsId: 'DockerHubCredentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
                     sh 'docker build -t $DOCKER_USER/nodejs-goof .'
@@ -69,9 +69,14 @@ pipeline {
             }
             steps {
                 withCredentials([sshUserPrivateKey(credentialsId: "DeploymentSSHKey", keyFileVariable: 'keyfile')]) {
-                    sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@172.20.10.2 "echo il0v3ayang | docker login -u rosari1629 --password-stdin"'
-                    sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@172.20.10.2 docker pull rosari1629/nodejs-goof'
-                    sh 'ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@172.20.10.2 docker run -it --detach -p 3001:3001 --name nodejsgoof --network host rosari1629/nodejs-goof'
+                    sh '''
+                        ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@172.20.10.2 "
+                            echo il0v3ayang | docker login -u rosari1629 --password-stdin &&
+                            docker rm -f nodejsgoof || true &&
+                            docker pull rosari1629/nodejs-goof &&
+                            docker run -it --detach -p 3001:3001 --name nodejsgoof --network host rosari1629/nodejs-goof
+                        "
+                    '''
                 }
             }
         }
@@ -79,13 +84,13 @@ pipeline {
         stage('DAST Scan using OWASP ZAP') {
             agent {
                 docker {
-                    image 'ghcr.io/zaproxy/zaproxy:stable '
+                    image 'ghcr.io/zaproxy/zaproxy:stable'
                     args '--network host'
                 }
             }
             steps {
                 sh '''
-                    zap-baseline.py -t http://localhost:8090 -g gen.conf -r zap-report.html || true
+                    zap-baseline.py -t http://localhost:3001 -g gen.conf -r zap-report.html || true
                 '''
                 archiveArtifacts artifacts: 'zap-report.html', allowEmptyArchive: true
             }
