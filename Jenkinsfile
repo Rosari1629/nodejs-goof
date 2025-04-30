@@ -89,33 +89,37 @@ pipeline {
                 }
             }
             steps {
-                script {
-                    // Membuat direktori /zap/wrk di dalam kontainer jika tidak ada
-                    sh 'docker exec owasp mkdir -p /zap/wrk'
+                sh '''
+                    mkdir -p zap-report
+                    zap-baseline.py -t http://localhost:3001 -r zap-report/report.html -I || true
 
-                    // Menjalankan pemindaian ZAP dan menghasilkan laporan
-                    sh '''
-                        zap-baseline.py -t http://localhost:3001 -g gen.conf -r /zap/wrk/zap-report.html || true
-                        ls -la /zap/wrk  # Memeriksa apakah laporan ada di sini
-                    '''
-                    
-                    // Menyalin laporan ke workspace Jenkins
-                    sh 'docker cp owasp:/zap/wrk/zap-report.html .'
-                    archiveArtifacts artifacts: 'zap-report.html', allowEmptyArchive: true
-                }
+                    echo "==> Menampilkan isi direktori zap-report:"
+                    ls -lh zap-report
+
+                    echo "==> Cuplikan isi report.html:"
+                    head -n 20 zap-report/report.html || echo "report.html tidak ditemukan"
+                '''
             }
         }
-    }
 
-    post {
-        always {
-            emailext(
-                subject: "Laporan CI/CD Pipeline (ZAP Scan)",
-                body: "Berikut adalah hasil pipeline dan DAST scan OWASP ZAP.<br><br>Silakan lihat lampiran.",
-                to: 'rosaridalige36@gmail.com',
-                attachmentsPattern: 'zap-report.html',
-                mimeType: 'text/html'
-            )
+        stage('Copy and Archive Report') {
+            steps {
+                echo 'Menyalin dan mengarsip report.html dari direktori zap-report'
+                sh 'cp zap-report/report.html . || echo "Gagal menyalin report.html"'
+                archiveArtifacts artifacts: 'report.html', allowEmptyArchive: true
+            }
+        }
+
+        stage('Email Report') {
+            steps {
+                emailext(
+                    subject: "Laporan CI/CD Pipeline (ZAP Scan)",
+                    body: "Berikut adalah hasil pipeline dan DAST scan OWASP ZAP.<br><br>Silakan lihat lampiran.",
+                    to: 'rosaridalige36@gmail.com',
+                    attachmentsPattern: 'report.html',
+                    mimeType: 'text/html'
+                )
+            }
         }
     }
 }
