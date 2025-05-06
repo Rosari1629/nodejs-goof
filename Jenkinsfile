@@ -3,6 +3,10 @@ pipeline {
 
     environment {
         SNYK_CREDENTIALS = credentials('SnykToken')
+        APP_NAME = 'goof'
+        ZAP_REPORT_DIR = '/home/rosari/ZAP-REPORT'
+        ZAP_REPORT_JSON = "report_goof.json"
+        ZAP_IMAGE = 'ghcr.io/zaproxy/zaproxy:stable'
     }
 
     stages {
@@ -40,7 +44,7 @@ pipeline {
                 }
             }
             steps {
-                sh 'echo test'
+                sh 'npm test || echo "Test selesai dengan peringatan."'
             }
         }
 
@@ -84,46 +88,43 @@ pipeline {
         stage('DAST Scan using OWASP ZAP') {
             agent {
                 docker {
-                    image 'ghcr.io/zaproxy/zaproxy:stable'
-                    args '--network host'
+                    image "${env.ZAP_IMAGE}"
+                    args '--network host -v /home/rosari/ZAP-REPORT:/zap/wrk'
                 }
             }
             steps {
                 sh '''
-                    mkdir -p zap-report
-                    zap-baseline.py -t http://localhost:3001 -r zap-report/report.html -I || true
-
-                    echo "==> Menampilkan isi direktori zap-report:"
-                    ls -lh zap-report
-
-                    echo "==> Cuplikan isi report.html:"
-                    head -n 20 zap-report/report.html || echo "report.html tidak ditemukan"
+                    zap-baseline.py -t http://localhost:3001 \
+                        -r /zap/wrk/report.html \
+                        -x /zap/wrk/report.xml \
+                        -J /zap/wrk/report_goof.json -I || echo "ZAP scan failed"
                 '''
             }
         }
 
-        stage('Copy and Archive Report') {
+        stage('Report Scanning and Email') {
             agent any
             steps {
                 script {
-                    echo 'Menyalin report.html dari direktori zap-report ke workspace...'
-                    sh 'cp zap-report/report.html . || echo "Gagal menyalin report.html"'
-                    sh 'ls -lh'
-                    archiveArtifacts artifacts: 'report.html', allowEmptyArchive: true
-                }
-            }
-        }
+                    sh "cp /home/rosari/ZAP-REPORT/report_goof.json . || echo 'JSON report not found'"
+                    sh "cp /home/rosari/ZAP-REPORT/report.html . || echo 'HTML report not found'"
+                    sh "cp /home/rosari/ZAP-REPORT/report.xml . || echo 'XML report not found'"
+                    sh "ls -lh report* || echo 'Tidak ada file laporan ditemukan'"
 
-        stage('Email Report') {
-            agent any
-            steps {
-                emailext(
-                    subject: "Laporan CI/CD Pipeline (ZAP Scan)",
-                    body: "Berikut adalah hasil pipeline dan DAST scan OWASP ZAP.<br><br>Silakan lihat lampiran.",
-                    to: 'rosaridalige36@gmail.com',
-                    attachmentsPattern: 'report.html',
-                    mimeType: 'text/html'
-                )
+                    def attachments = []
+                    if (fileExists("report_goof.json")) attachments << "report_goof.json"
+                    if (fileExists("report.html")) attachments << "report.html"
+                    if (fileExists("report.xml")) attachments << "report.xml"
+
+                    emailext (
+                        subject: "ZAP Report - GOOF",
+                        body: "Terlampir hasil scan aplikasi Node.js GOOF.<br>Silakan cek lampiran.",
+                        attachmentsPattern: attachments.join(', '),
+                        to: 'rosaridalige36@gmail.com',
+                        attachLog: true,
+                        mimeType: 'text/html'
+                    )
+                }
             }
         }
     }
@@ -135,7 +136,7 @@ pipeline {
                     publishHTML(target: [
                         reportDir: '.',
                         reportFiles: 'report.html',
-                        reportName: 'ZAP Security Report',
+                        reportName: 'ZAP Security Report - GOOF',
                         keepAll: true,
                         allowMissing: true,
                         alwaysLinkToLastBuild: true
