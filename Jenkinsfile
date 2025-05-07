@@ -57,9 +57,11 @@ pipeline {
             }
             steps {
                 withCredentials([usernamePassword(credentialsId: 'DockerHubCredentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
-                    sh 'docker build -t $DOCKER_USER/nodejs-goof .'
-                    sh 'docker push $DOCKER_USER/nodejs-goof'
+                    sh '''
+                        echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                        docker build -t $DOCKER_USER/nodejs-goof .
+                        docker push $DOCKER_USER/nodejs-goof
+                    '''
                 }
             }
         }
@@ -75,10 +77,11 @@ pipeline {
                 withCredentials([sshUserPrivateKey(credentialsId: "DeploymentSSHKey", keyFileVariable: 'keyfile')]) {
                     sh '''
                         ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@172.20.10.2 "
-                            echo il0v3ayang | docker login -u rosari1629 --password-stdin &&
-                            docker rm -f nodejsgoof || true &&
-                            docker pull rosari1629/nodejs-goof &&
-                            docker run -it --detach -p 3001:3001 --name nodejsgoof --network host rosari1629/nodejs-goof
+                            docker network create zapnet || true
+                            echo il0v3ayang | docker login -u rosari1629 --password-stdin
+                            docker rm -f nodejsgoof || true
+                            docker pull rosari1629/nodejs-goof
+                            docker run -d --name nodejsgoof --network zapnet -p 3001:3001 rosari1629/nodejs-goof
                         "
                     '''
                 }
@@ -89,12 +92,12 @@ pipeline {
             agent {
                 docker {
                     image "${env.ZAP_IMAGE}"
-                    args '--network host -v /home/rosari/ZAP-REPORT:/zap/wrk'
+                    args '--network zapnet -v /home/rosari/ZAP-REPORT:/zap/wrk'
                 }
             }
             steps {
                 sh '''
-                    zap-baseline.py -t http://localhost:3001 \
+                    zap-baseline.py -t http://nodejsgoof:3001 \
                         -r /zap/wrk/report.html \
                         -x /zap/wrk/report.xml \
                         -J /zap/wrk/report_goof.json -I || echo "ZAP scan failed"
