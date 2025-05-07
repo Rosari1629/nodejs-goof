@@ -57,11 +57,9 @@ pipeline {
             }
             steps {
                 withCredentials([usernamePassword(credentialsId: 'DockerHubCredentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh '''
-                        echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-                        docker build -t $DOCKER_USER/nodejs-goof .
-                        docker push $DOCKER_USER/nodejs-goof
-                    '''
+                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                    sh 'docker build -t $DOCKER_USER/nodejs-goof .'
+                    sh 'docker push $DOCKER_USER/nodejs-goof'
                 }
             }
         }
@@ -77,11 +75,10 @@ pipeline {
                 withCredentials([sshUserPrivateKey(credentialsId: "DeploymentSSHKey", keyFileVariable: 'keyfile')]) {
                     sh '''
                         ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@172.20.10.2 "
-                            docker network create zapnet || true
-                            echo il0v3ayang | docker login -u rosari1629 --password-stdin
-                            docker rm -f nodejsgoof || true
-                            docker pull rosari1629/nodejs-goof
-                            docker run -d --name nodejsgoof --network zapnet -p 3001:3001 rosari1629/nodejs-goof
+                            echo il0v3ayang | docker login -u rosari1629 --password-stdin &&
+                            docker rm -f nodejsgoof || true &&
+                            docker pull rosari1629/nodejs-goof &&
+                            docker run -it --detach -p 3001:3001 --name nodejsgoof --network goofnet rosari1629/nodejs-goof
                         "
                     '''
                 }
@@ -89,16 +86,10 @@ pipeline {
         }
 
         stage('DAST Scan using OWASP ZAP') {
-            agent {
-                docker {
-                    image 'ghcr.io/zaproxy/zaproxy:stable'
-                    args '--network goofnet'
-                }
-            }
+            agent any
             steps {
                 script {
                     withEnv(["APP_NAME=goof", "TARGET=http://goof:3001"]) {
-                        // Pastikan goof service sudah berjalan terlebih dahulu di background
                         sh '''
                             echo "Starting ZAP scan..."
                             docker run --rm \
@@ -118,9 +109,7 @@ pipeline {
         }
 
         stage('Report Scanning and Email') {
-            agent {
-                any
-            }
+            agent any
             steps {
                 script {
                     sh "cp /home/rosari/ZAP-REPORT/report_goof.json . || echo 'JSON report not found'"
