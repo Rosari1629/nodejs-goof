@@ -90,7 +90,10 @@ pipeline {
 
         stage('DAST Scan using OWASP ZAP') {
             agent {
-                any
+                docker {
+                    image 'ghcr.io/zaproxy/zaproxy:stable'
+                    args '--network goofnet'
+                }
             }
             steps {
                 script {
