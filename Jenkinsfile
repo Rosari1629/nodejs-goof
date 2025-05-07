@@ -89,10 +89,13 @@ pipeline {
         }
 
         stage('DAST Scan using OWASP ZAP') {
-            agent any
+            agent {
+                any
+            }
             steps {
                 script {
                     withEnv(["APP_NAME=goof", "TARGET=http://goof:3001"]) {
+                        // Pastikan goof service sudah berjalan terlebih dahulu di background
                         sh '''
                             echo "Starting ZAP scan..."
                             docker run --rm \
@@ -112,7 +115,9 @@ pipeline {
         }
 
         stage('Report Scanning and Email') {
-            agent any
+            agent {
+                any
+            }
             steps {
                 script {
                     sh "cp /home/rosari/ZAP-REPORT/report_goof.json . || echo 'JSON report not found'"
@@ -140,16 +145,17 @@ pipeline {
 
     post {
         success {
-            agent any
-            steps {
-                publishHTML(target: [
-                    reportDir: '.',
-                    reportFiles: 'report.html',
-                    reportName: 'ZAP Security Report - GOOF',
-                    keepAll: true,
-                    allowMissing: true,
-                    alwaysLinkToLastBuild: true
-                ])
+            script {
+                node {
+                    publishHTML(target: [
+                        reportDir: '.',
+                        reportFiles: 'report.html',
+                        reportName: 'ZAP Security Report - GOOF',
+                        keepAll: true,
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: true
+                    ])
+                }
             }
         }
     }
