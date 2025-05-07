@@ -88,22 +88,29 @@ pipeline {
             }
         }
 
+
         stage('DAST Scan using OWASP ZAP') {
-            agent {
-                docker {
-                    image "${env.ZAP_IMAGE}"
-                    args '--network zapnet -v /home/rosari/ZAP-REPORT:/zap/wrk'
-                }
-            }
-            steps {
+    steps {
+        script {
+            withEnv(["APP_NAME=goof", "TARGET=http://goof:3001"]) {
+                // Pastikan goof service sudah berjalan terlebih dahulu di background
                 sh '''
-                    zap-baseline.py -t http://nodejsgoof:3001 \
+                    echo "Starting ZAP scan..."
+                    docker run --rm \
+                        --network goofnet \
+                        -v /home/rosari/ZAP-REPORT:/zap/wrk \
+                        ghcr.io/zaproxy/zaproxy:stable \
+                        zap-baseline.py \
+                        -t $TARGET \
                         -r /zap/wrk/report.html \
                         -x /zap/wrk/report.xml \
-                        -J /zap/wrk/report_goof.json -I || echo "ZAP scan failed"
+                        -J /zap/wrk/report_${APP_NAME}.json \
+                        -I || echo "ZAP scan failed"
                 '''
             }
         }
+    }
+}
 
         stage('Report Scanning and Email') {
             agent any
