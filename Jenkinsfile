@@ -5,6 +5,8 @@ pipeline {
         SNYK_CREDENTIALS = credentials('SnykToken')
         APP_NAME = 'goof'
         ZAP_REPORT_DIR = '/home/rosari/ZAP-REPORT'
+        ZAP_REPORT_HTML = "report_goof.html"
+        ZAP_REPORT_XML  = "report_goof.xml"
         ZAP_REPORT_JSON = "report_goof.json"
         ZAP_IMAGE = 'ghcr.io/zaproxy/zaproxy:stable'
     }
@@ -75,10 +77,10 @@ pipeline {
                 withCredentials([sshUserPrivateKey(credentialsId: "DeploymentSSHKey", keyFileVariable: 'keyfile')]) {
                     sh '''
                         ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@172.20.10.2 "
+                            docker network create goofnet || true &&
                             echo il0v3ayang | docker login -u rosari1629 --password-stdin &&
                             docker rm -f nodejsgoof || true &&
-                            docker pull rosari1629/nodejs-goof &&
-                            docker run -it --detach -p 3001:3001 --name nodejsgoof --network goofnet rosari1629/nodejs-goof
+                            docker run -d --name nodejsgoof --network goofnet -p 3001:3001 rosari1629/nodejs-goof
                         "
                     '''
                 }
@@ -89,7 +91,7 @@ pipeline {
             agent any
             steps {
                 script {
-                    withEnv(["APP_NAME=goof", "TARGET=http://goof:3001"]) {
+                    withEnv(["TARGET=http://nodejsgoof:3001"]) {
                         sh '''
                             echo "Starting ZAP scan..."
                             docker run --rm \
@@ -98,9 +100,9 @@ pipeline {
                                 ghcr.io/zaproxy/zaproxy:stable \
                                 zap-baseline.py \
                                 -t $TARGET \
-                                -r /zap/wrk/report.html \
-                                -x /zap/wrk/report.xml \
-                                -J /zap/wrk/report_${APP_NAME}.json \
+                                -r /zap/wrk/report_goof.html \
+                                -x /zap/wrk/report_goof.xml \
+                                -J /zap/wrk/report_goof.json \
                                 -I || echo "ZAP scan failed"
                         '''
                     }
@@ -113,14 +115,14 @@ pipeline {
             steps {
                 script {
                     sh "cp /home/rosari/ZAP-REPORT/report_goof.json . || echo 'JSON report not found'"
-                    sh "cp /home/rosari/ZAP-REPORT/report.html . || echo 'HTML report not found'"
-                    sh "cp /home/rosari/ZAP-REPORT/report.xml . || echo 'XML report not found'"
+                    sh "cp /home/rosari/ZAP-REPORT/report_goof.html . || echo 'HTML report not found'"
+                    sh "cp /home/rosari/ZAP-REPORT/report_goof.xml . || echo 'XML report not found'"
                     sh "ls -lh report* || echo 'Tidak ada file laporan ditemukan'"
 
                     def attachments = []
                     if (fileExists("report_goof.json")) attachments << "report_goof.json"
-                    if (fileExists("report.html")) attachments << "report.html"
-                    if (fileExists("report.xml")) attachments << "report.xml"
+                    if (fileExists("report_goof.html")) attachments << "report_goof.html"
+                    if (fileExists("report_goof.xml")) attachments << "report_goof.xml"
 
                     emailext (
                         subject: "ZAP Report - GOOF",
@@ -141,7 +143,7 @@ pipeline {
                 node {
                     publishHTML(target: [
                         reportDir: '.',
-                        reportFiles: 'report.html',
+                        reportFiles: 'report_goof.html',
                         reportName: 'ZAP Security Report - GOOF',
                         keepAll: true,
                         allowMissing: true,
