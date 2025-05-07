@@ -88,29 +88,28 @@ pipeline {
             }
         }
 
-
         stage('DAST Scan using OWASP ZAP') {
-    steps {
-        script {
-            withEnv(["APP_NAME=goof", "TARGET=http://goof:3001"]) {
-                // Pastikan goof service sudah berjalan terlebih dahulu di background
-                sh '''
-                    echo "Starting ZAP scan..."
-                    docker run --rm \
-                        --network goofnet \
-                        -v /home/rosari/ZAP-REPORT:/zap/wrk \
-                        ghcr.io/zaproxy/zaproxy:stable \
-                        zap-baseline.py \
-                        -t $TARGET \
-                        -r /zap/wrk/report.html \
-                        -x /zap/wrk/report.xml \
-                        -J /zap/wrk/report_${APP_NAME}.json \
-                        -I || echo "ZAP scan failed"
-                '''
+            agent any
+            steps {
+                script {
+                    withEnv(["APP_NAME=goof", "TARGET=http://goof:3001"]) {
+                        sh '''
+                            echo "Starting ZAP scan..."
+                            docker run --rm \
+                                --network goofnet \
+                                -v /home/rosari/ZAP-REPORT:/zap/wrk \
+                                ghcr.io/zaproxy/zaproxy:stable \
+                                zap-baseline.py \
+                                -t $TARGET \
+                                -r /zap/wrk/report.html \
+                                -x /zap/wrk/report.xml \
+                                -J /zap/wrk/report_${APP_NAME}.json \
+                                -I || echo "ZAP scan failed"
+                        '''
+                    }
+                }
             }
         }
-    }
-}
 
         stage('Report Scanning and Email') {
             agent any
@@ -141,17 +140,16 @@ pipeline {
 
     post {
         success {
-            script {
-                node {
-                    publishHTML(target: [
-                        reportDir: '.',
-                        reportFiles: 'report.html',
-                        reportName: 'ZAP Security Report - GOOF',
-                        keepAll: true,
-                        allowMissing: true,
-                        alwaysLinkToLastBuild: true
-                    ])
-                }
+            agent any
+            steps {
+                publishHTML(target: [
+                    reportDir: '.',
+                    reportFiles: 'report.html',
+                    reportName: 'ZAP Security Report - GOOF',
+                    keepAll: true,
+                    allowMissing: true,
+                    alwaysLinkToLastBuild: true
+                ])
             }
         }
     }
