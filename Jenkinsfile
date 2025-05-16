@@ -75,18 +75,28 @@ pipeline {
             }
             steps {
                 withCredentials([sshUserPrivateKey(credentialsId: "DeploymentSSHKey", keyFileVariable: 'keyfile')]) {
-                    sh '''
-                        ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@172.20.10.2 "
-                            docker network create goofnet || true &&
-                            echo il0v3ayang | docker login -u rosari1629 --password-stdin &&
-                            docker rm -f nodejsgoof || true &&
-                            docker run -d --name nodejsgoof --network goofnet -p 3001:3001 rosari1629/nodejs-goof
-                        "
-                    '''
-                    // Health check aplikasi siap menerima request
-                    timeout(time: 60, unit: 'SECONDS') {
-                        waitUntil {
-                            script {
+                    script {
+                        sh """
+                            ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@172.20.10.2 '
+                                docker network create goofnet || true &&
+                                echo il0v3ayang | docker login -u rosari1629 --password-stdin &&
+                                docker rm -f nodejsgoof || true &&
+                                docker run -d --name nodejsgoof --network goofnet -p 3001:3001 rosari1629/nodejs-goof
+                            '
+                        """
+                        // Delay agar aplikasi siap
+                        sleep 10
+
+                        // Debug info container
+                        sh """
+                            ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@172.20.10.2 '
+                                docker ps &&
+                                docker logs nodejsgoof || echo "No logs found"
+                            '
+                        """
+
+                        timeout(time: 60, unit: 'SECONDS') {
+                            waitUntil {
                                 def status = sh (
                                     script: "ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@172.20.10.2 'curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001 || echo ERR'",
                                     returnStdout: true
