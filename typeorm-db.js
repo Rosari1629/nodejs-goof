@@ -1,8 +1,9 @@
-var typeorm = require("typeorm");
-var EntitySchema = typeorm.EntitySchema;
+const typeorm = require("typeorm");
+const EntitySchema = typeorm.EntitySchema;
 
 const Users = require("./entity/Users");
 
+// Setup koneksi MySQL
 typeorm.createConnection({
   name: "mysql",
   type: "mysql",
@@ -11,32 +12,25 @@ typeorm.createConnection({
   username: process.env.MYSQL_USER || "root",
   password: process.env.MYSQL_PASSWORD || "root",
   database: process.env.MYSQL_DATABASE || "acme",
-  synchronize: true,
-  logging: true,
-  entities: [
-    new EntitySchema(Users)
-  ]
-}).then(() => {
-  const dbConnection = typeorm.getConnection("mysql");
-  const repo = dbConnection.getRepository("Users");
-  return repo;
-}).then((repo) => {
-  console.log('Seeding 2 users to MySQL users table: Liran (role: user), Simon (role: admin)');
-  const inserts = [
-    repo.insert({
-      name: "Liran",
-      address: "IL",
-      role: "user"
-    }),
-    repo.insert({
-      name: "Simon",
-      address: "UK",
-      role: "admin"
-    })
-  ];
+  synchronize: true,  // hanya untuk dev, disable di production!
+  logging: false,
+  entities: [new EntitySchema(Users)],
+}).then(async (connection) => {
+  const repo = connection.getRepository("Users");
 
-  return Promise.all(inserts);
+  // Cek apakah user sudah ada
+  const existingUsers = await repo.find();
+  if (existingUsers.length === 0) {
+    console.log("Seeding 2 users ke tabel MySQL: Liran (user), Simon (admin)");
+    await repo.insert([
+      { name: "Liran", address: "IL", role: "user" },
+      { name: "Simon", address: "UK", role: "admin" },
+    ]);
+    console.log("Seeding selesai.");
+  } else {
+    console.log("Data user sudah ada. Skip seeding.");
+  }
 }).catch((err) => {
-  console.error('failed connecting and seeding users to the MySQL database');
-  console.error(err);
+  console.error("❌ Gagal koneksi dan seeding ke database MySQL.");
+  console.error(err.message || err);
 });
