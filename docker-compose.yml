@@ -42,7 +42,7 @@ services:
     networks:
       - goofnet
 
-    goof-mongo:
+  goof-mongo:
     container_name: goof-mongo
     image: mongo:4.4
     ports:
