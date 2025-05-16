@@ -83,6 +83,19 @@ pipeline {
                             docker run -d --name nodejsgoof --network goofnet -p 3001:3001 rosari1629/nodejs-goof
                         "
                     '''
+                    // Health check aplikasi siap menerima request
+                    timeout(time: 60, unit: 'SECONDS') {
+                        waitUntil {
+                            script {
+                                def status = sh (
+                                    script: "ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@172.20.10.2 'curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001 || echo ERR'",
+                                    returnStdout: true
+                                ).trim()
+                                echo "Health check HTTP status: ${status}"
+                                return (status == '200')
+                            }
+                        }
+                    }
                 }
             }
         }
