@@ -1,3 +1,4 @@
+// mongoose-db.js
 const mongoose = require('mongoose');
 
 // Define schemas
@@ -14,43 +15,53 @@ const UserSchema = new mongoose.Schema({
 mongoose.model('Todo', TodoSchema);
 mongoose.model('User', UserSchema);
 
-// Get Mongo URI
+// Determine Mongo URI
 let mongoUri = process.env.MONGO_URI || 'mongodb://localhost/express-todo';
 
-// Optional Cloud Foundry support
-try {
-  const cfenv = require("cfenv");
-  const mongoCFUri = cfenv.getAppEnv().getServiceURL('goof-mongo');
-  if (mongoCFUri) {
-    mongoUri = mongoCFUri;
-  }
-} catch (err) {
-  // cfenv not available, skip
+// Docker support
+if (process.env.DOCKER === '1') {
+  mongoUri = process.env.MONGO_URI || 'mongodb://goof-mongo/express-todo';
 }
 
-// Log Mongo URI being used
-console.log("Using Mongo URI:", mongoUri);
+console.log('Using Mongo URI:', mongoUri);
 
-// Connect to MongoDB
-mongoose.connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => {
-    console.log("MongoDB connected");
+// Connect (callback/event style for mongoose v4.x)
+mongoose.connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true });
 
-    const User = mongoose.model('User');
-    User.findOne({ username: 'admin@snyk.io' }).then(user => {
-      if (!user) {
-        console.log('Admin user not found. Creating default admin...');
-        new User({
-          username: 'admin@snyk.io',
-          password: 'SuperSecretPassword',
-        }).save().then(() => {
-          console.log('Admin user created');
-        }).catch(err => {
+// Fired when successfully connected
+mongoose.connection.on('connected', () => {
+  console.log('✅ MongoDB connected');
+
+  const User = mongoose.model('User');
+  User.findOne({ username: 'admin@snyk.io' }, (err, user) => {
+    if (err) {
+      console.error('Error finding admin user:', err);
+      return;
+    }
+    if (!user) {
+      console.log('No admin user found. Creating default admin...');
+      new User({
+        username: 'admin@snyk.io',
+        password: 'SuperSecretPassword',
+      }).save(err => {
+        if (err) {
           console.error('Error creating admin user:', err);
-        });
-      }
-    });
-  })
-  .catch(err => {
-    console.error("MongoDB connection error:", err);
+        } else {
+          console.log('✅ Admin user created');
+        }
+      });
+    } else {
+      console.log('Admin user already exists, skipping seeding.');
+    }
   });
+});
+
+// Fired when connection fails
+mongoose.connection.on('error', err => {
+  console.error('❌ MongoDB connection error:', err);
+});
+
+// Optional: when disconnected
+mongoose.connection.on('disconnected', () => {
+  console.warn('⚠️ MongoDB disconnected');
+});
