@@ -1,58 +1,56 @@
-var mongoose = require('mongoose');
-var cfenv = require("cfenv");
-var Schema = mongoose.Schema;
+const mongoose = require('mongoose');
 
-var Todo = new Schema({
+// Define schemas
+const TodoSchema = new mongoose.Schema({
   content: Buffer,
   updated_at: Date,
 });
 
-mongoose.model('Todo', Todo);
-
-var User = new Schema({
+const UserSchema = new mongoose.Schema({
   username: String,
   password: String,
 });
 
-mongoose.model('User', User);
+mongoose.model('Todo', TodoSchema);
+mongoose.model('User', UserSchema);
 
-// CloudFoundry env vars
-var mongoCFUri = cfenv.getAppEnv().getServiceURL('goof-mongo');
-console.log(JSON.stringify(cfenv.getAppEnv()));
+// Get Mongo URI
+let mongoUri = process.env.MONGO_URI || 'mongodb://localhost/express-todo';
 
-// Default Mongo URI is local
-const DOCKER = process.env.DOCKER
-if (DOCKER === '1') {
-  var mongoUri = 'mongodb://goof-mongo/express-todo';
-} else {
-  var mongoUri = 'mongodb://localhost/express-todo';
+// Optional Cloud Foundry support
+try {
+  const cfenv = require("cfenv");
+  const mongoCFUri = cfenv.getAppEnv().getServiceURL('goof-mongo');
+  if (mongoCFUri) {
+    mongoUri = mongoCFUri;
+  }
+} catch (err) {
+  // cfenv not available, skip
 }
 
+// Log Mongo URI being used
+console.log("Using Mongo URI:", mongoUri);
 
-// CloudFoundry Mongo URI
-if (mongoCFUri) {
-  mongoUri = mongoCFUri;
-} else if (process.env.MONGOLAB_URI) {
-  // Generic (plus Heroku) env var support
-  mongoUri = process.env.MONGOLAB_URI;
-} else if (process.env.MONGODB_URI) {
-  // Generic (plus Heroku) env var support
-  mongoUri = process.env.MONGODB_URI;
-}
+// Connect to MongoDB
+mongoose.connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => {
+    console.log("MongoDB connected");
 
-console.log("Using Mongo URI " + mongoUri);
-
-mongoose.connect(mongoUri);
-
-User = mongoose.model('User');
-User.find({ username: 'admin@snyk.io' }).exec(function (err, users) {
-  console.log(users);
-  if (users.length === 0) {
-    console.log('no admin');
-    new User({ username: 'admin@snyk.io', password: 'SuperSecretPassword' }).save(function (err, user, count) {
-      if (err) {
-        console.log('error saving admin user');
+    const User = mongoose.model('User');
+    User.findOne({ username: 'admin@snyk.io' }).then(user => {
+      if (!user) {
+        console.log('Admin user not found. Creating default admin...');
+        new User({
+          username: 'admin@snyk.io',
+          password: 'SuperSecretPassword',
+        }).save().then(() => {
+          console.log('Admin user created');
+        }).catch(err => {
+          console.error('Error creating admin user:', err);
+        });
       }
     });
-  }
-});
+  })
+  .catch(err => {
+    console.error("MongoDB connection error:", err);
+  });
