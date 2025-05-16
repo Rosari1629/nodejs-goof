@@ -2,7 +2,6 @@ pipeline {
     agent none
 
     environment {
-        SNYK_CREDENTIALS = credentials('SnykToken')
         APP_NAME = 'goof'
         ZAP_REPORT_DIR = '/home/rosari/ZAP-REPORT'
         ZAP_REPORT_HTML = "report_goof.html"
@@ -12,6 +11,7 @@ pipeline {
     }
 
     stages {
+
         stage('Secret Scanning Using Trufflehog') {
             agent {
                 docker {
@@ -30,9 +30,7 @@ pipeline {
 
         stage('Build') {
             agent {
-                docker {
-                    image 'node:lts-buster-slim'
-                }
+                docker { image 'node:lts-buster-slim' }
             }
             steps {
                 sh 'npm install'
@@ -41,16 +39,14 @@ pipeline {
 
         stage('Test') {
             agent {
-                docker {
-                    image 'node:lts-buster-slim'
-                }
+                docker { image 'node:lts-buster-slim' }
             }
             steps {
                 sh 'npm test || echo "Test selesai dengan peringatan."'
             }
         }
 
-        stage('Build Docker Image and Push to Docker Registry') {
+        stage('Build Docker Image and Push') {
             agent {
                 docker {
                     image 'docker:dind'
@@ -66,37 +62,39 @@ pipeline {
             }
         }
 
-        stage('Deploy Docker Image') {
+        stage('Deploy and Start Containers') {
             agent {
-                docker {
-                    image 'kroniak/ssh-client'
-                    args '--user root --network host'
-                }
+                docker { image 'kroniak/ssh-client' }
             }
             steps {
                 withCredentials([sshUserPrivateKey(credentialsId: "DeploymentSSHKey", keyFileVariable: 'keyfile')]) {
-                    script {
-                        sh """
-                            ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@172.20.10.2 '
-                                docker network create goofnet || true &&
-                                echo il0v3ayang | docker login -u rosari1629 --password-stdin &&
-                                docker rm -f nodejsgoof || true &&
-                                docker run -d --name nodejsgoof --network goofnet -p 3001:3001 rosari1629/nodejs-goof
-                            '
-                        """
-                        // Delay agar aplikasi siap
-                        sleep 10
+                    sh '''
+                        ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@172.20.10.2 '
+                            docker network create goofnet || true
 
-                        // Debug info container
-                        sh """
-                            ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@172.20.10.2 '
-                                docker ps &&
-                                docker logs nodejsgoof || echo "No logs found"
-                            '
-                        """
+                            docker rm -f mysql-container mongo-container nodejsgoof || true
 
-                        timeout(time: 60, unit: 'SECONDS') {
-                            waitUntil {
+                            docker run -d --name mysql-container --network goofnet \
+                                -e MYSQL_ROOT_PASSWORD=rootpass \
+                                -e MYSQL_DATABASE=goofdb \
+                                mysql:5.7
+
+                            docker run -d --name mongo-container --network goofnet mongo:4.4
+
+                            sleep 15 # Tunggu DB siap
+
+                            docker run -d --name nodejsgoof --network goofnet -p 3001:3001 \
+                                -e MYSQL_HOST=mysql-container \
+                                -e MYSQL_USER=root \
+                                -e MYSQL_PASSWORD=rootpass \
+                                -e MYSQL_DATABASE=goofdb \
+                                -e MONGO_URL=mongodb://mongo-container:27017/express-todo \
+                                rosari1629/nodejs-goof
+                        '
+                    '''
+                    timeout(time: 60, unit: 'SECONDS') {
+                        waitUntil {
+                            script {
                                 def status = sh (
                                     script: "ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@172.20.10.2 'curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001 || echo ERR'",
                                     returnStdout: true
@@ -114,21 +112,18 @@ pipeline {
             agent any
             steps {
                 script {
-                    withEnv(["TARGET=http://nodejsgoof:3001"]) {
-                        sh '''
-                            echo "Starting ZAP scan..."
-                            docker run --rm \
-                                --network goofnet \
-                                -v /home/rosari/ZAP-REPORT:/zap/wrk \
-                                ghcr.io/zaproxy/zaproxy:stable \
-                                zap-baseline.py \
-                                -t $TARGET \
-                                -r /zap/wrk/report_goof.html \
-                                -x /zap/wrk/report_goof.xml \
-                                -J /zap/wrk/report_goof.json \
-                                -I || echo "ZAP scan failed"
-                        '''
-                    }
+                    sh '''
+                        docker run --rm \
+                            --network goofnet \
+                            -v /home/rosari/ZAP-REPORT:/zap/wrk \
+                            ghcr.io/zaproxy/zaproxy:stable \
+                            zap-baseline.py \
+                            -t http://nodejsgoof:3001 \
+                            -r /zap/wrk/report_goof.html \
+                            -x /zap/wrk/report_goof.xml \
+                            -J /zap/wrk/report_goof.json \
+                            -I || echo "ZAP scan failed"
+                    '''
                 }
             }
         }
@@ -137,15 +132,11 @@ pipeline {
             agent any
             steps {
                 script {
-                    sh "cp /home/rosari/ZAP-REPORT/report_goof.json . || echo 'JSON report not found'"
-                    sh "cp /home/rosari/ZAP-REPORT/report_goof.html . || echo 'HTML report not found'"
-                    sh "cp /home/rosari/ZAP-REPORT/report_goof.xml . || echo 'XML report not found'"
-                    sh "ls -lh report* || echo 'Tidak ada file laporan ditemukan'"
-
+                    sh "cp /home/rosari/ZAP-REPORT/report_goof.* . || echo 'Report not found'"
                     def attachments = []
-                    if (fileExists("report_goof.json")) attachments << "report_goof.json"
-                    if (fileExists("report_goof.html")) attachments << "report_goof.html"
-                    if (fileExists("report_goof.xml")) attachments << "report_goof.xml"
+                    ["html", "xml", "json"].each {
+                        if (fileExists("report_goof.${it}")) attachments << "report_goof.${it}"
+                    }
 
                     emailext (
                         subject: "ZAP Report - GOOF",
