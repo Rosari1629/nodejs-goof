@@ -16,16 +16,10 @@ mongoose.model('Todo', TodoSchema);
 mongoose.model('User', UserSchema);
 
 // Determine Mongo URI
-let mongoUri = process.env.MONGO_URI || 'mongodb://localhost/express-todo';
-
-// Docker support
-if (process.env.DOCKER === '1') {
-  mongoUri = process.env.MONGO_URI || 'mongodb://goof-mongo/express-todo';
-}
-
+const mongoUri = process.env.MONGO_URL || 'mongodb://localhost/express-todo';
 console.log('Using Mongo URI:', mongoUri);
 
-// Connect (callback/event style for mongoose v4.x)
+// Connect
 mongoose.connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true });
 
 // Fired when successfully connected
