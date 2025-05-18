@@ -119,9 +119,9 @@ pipeline {
                             ghcr.io/zaproxy/zaproxy:stable \
                             zap-baseline.py \
                             -t http://nodejsgoof:3001 \
-                            -r /zap/wrk/report_goof.html \
-                            -x /zap/wrk/report_goof.xml \
-                            -J /zap/wrk/report_goof.json \
+                            -r report_goof.html \
+                            -x report_goof.xml \
+                            -J report_goof.json \
                             -I || echo "ZAP scan failed"
                     '''
                 }
