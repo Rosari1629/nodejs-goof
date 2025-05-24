@@ -69,7 +69,7 @@ pipeline {
             steps {
                 withCredentials([sshUserPrivateKey(credentialsId: "DeploymentSSHKey", keyFileVariable: 'keyfile')]) {
                     sh '''
-                        ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@172.20.10.2 '
+                        ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@172.20.10.3 '
                             docker network create goofnet || true
 
                             docker rm -f mysql-container mongo-container nodejsgoof || true
@@ -96,7 +96,7 @@ pipeline {
                         waitUntil {
                             script {
                                 def status = sh (
-                                    script: "ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@172.20.10.2 'curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001 || echo ERR'",
+                                    script: "ssh -i ${keyfile} -o StrictHostKeyChecking=no rosari@172.20.10.3 'curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001 || echo ERR'",
                                     returnStdout: true
                                 ).trim()
                                 echo "Health check HTTP status: ${status}"
